@@ -28,15 +28,15 @@ sequenceDiagram
     participant DB as PostgreSQL
     C->>API: POST /api/v1/transfers (Idempotency-Key)
     API->>I: execute(key, request fingerprint)
-    I->>DB: BEGIN; INSERT key ON CONFLICT DO NOTHING
+    I->>DB: BEGIN, then INSERT key ON CONFLICT DO NOTHING
     alt key already completed
         I->>DB: load stored response
-        I-->>C: 201 + Idempotent-Replayed: true
+        I-->>C: 201 + Idempotent-Replayed true
     else new key
         I->>T: transfer(...)
-        T->>DB: SELECT ... FOR UPDATE (both accounts, sorted by id)
+        T->>DB: SELECT FOR UPDATE on both accounts (sorted by id)
         T->>DB: INSERT transfer, UPDATE balances, INSERT debit + credit
-        I->>DB: store response; COMMIT
+        I->>DB: store response, then COMMIT
         Note over DB: deferred trigger checks debits = credits
         I-->>C: 201
     end
@@ -47,17 +47,26 @@ erDiagram
     accounts ||--o{ ledger_entries : has
     transfers ||--|{ ledger_entries : "2 per transfer"
     accounts ||--o{ transfers : "source / destination"
-    accounts { uuid id PK
+
+    accounts {
+        uuid id PK
         text account_type "CUSTOMER or SYSTEM"
-        bigint balance "minor units" }
-    transfers { uuid id PK
-        bigint amount }
-    ledger_entries { bigint id PK
+        bigint balance "minor units"
+    }
+    transfers {
+        uuid id PK
+        bigint amount
+    }
+    ledger_entries {
+        bigint id PK
         text direction "DEBIT or CREDIT"
-        bigint balance_after }
-    idempotency_keys { text idempotency_key PK
+        bigint balance_after
+    }
+    idempotency_keys {
+        text idempotency_key PK
         text request_hash
-        jsonb response_body }
+        jsonb response_body
+    }
 ```
 
 Deposits are transfers from a per-currency `SYSTEM` funding account, so total money across all accounts is always exactly zero.
