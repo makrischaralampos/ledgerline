@@ -31,13 +31,16 @@ public class TransferController {
 
     private final TransferService service;
     private final IdempotencyService idempotency;
+    private final TransferMetrics metrics;
 
     public TransferController(
         TransferService service,
-        IdempotencyService idempotency
+        IdempotencyService idempotency,
+        TransferMetrics metrics
     ) {
         this.service = service;
         this.idempotency = idempotency;
+        this.metrics = metrics;
     }
 
     @PostMapping("/transfers")
@@ -58,6 +61,7 @@ public class TransferController {
         );
 
         return respond(
+            "transfer",
             idempotency.execute(
                 idempotencyKey,
                 fingerprint,
@@ -95,6 +99,7 @@ public class TransferController {
         );
 
         return respond(
+            "deposit",
             idempotency.execute(
                 idempotencyKey,
                 fingerprint,
@@ -118,9 +123,11 @@ public class TransferController {
         return TransferResponse.from(service.get(id));
     }
 
-    private static ResponseEntity<TransferResponse> respond(
+    private ResponseEntity<TransferResponse> respond(
+        String type,
         IdempotencyService.Result<TransferResponse> result
     ) {
+        metrics.record(type, result.replayed());
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(
             result.status()
         ).location(URI.create("/api/v1/transfers/" + result.body().id()));

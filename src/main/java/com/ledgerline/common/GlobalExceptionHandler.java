@@ -1,5 +1,6 @@
 package com.ledgerline.common;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +25,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         GlobalExceptionHandler.class
     );
 
+    private final MeterRegistry meterRegistry;
+
+    public GlobalExceptionHandler(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+
     @ExceptionHandler(DomainException.class)
     ProblemDetail handleDomain(DomainException ex) {
+        meterRegistry
+            .counter("ledgerline.errors", "code", ex.code())
+            .increment();
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
             ex.status(),
             ex.getMessage()
