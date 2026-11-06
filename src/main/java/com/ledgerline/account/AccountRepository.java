@@ -48,4 +48,39 @@ public class AccountRepository {
             .query(MAPPER)
             .optional();
     }
+
+    /** Takes a row lock held until the surrounding transaction ends. */
+    public Optional<Account> findByIdForUpdate(UUID id) {
+        return jdbc
+            .sql(
+                "SELECT " + COLUMNS + " FROM accounts WHERE id = :id FOR UPDATE"
+            )
+            .param("id", id)
+            .query(MAPPER)
+            .optional();
+    }
+
+    public Optional<Account> findSystemAccount(String currency) {
+        return jdbc
+            .sql(
+                "SELECT " +
+                    COLUMNS +
+                    " FROM accounts WHERE account_type = 'SYSTEM' AND currency = :currency"
+            )
+            .param("currency", currency)
+            .query(MAPPER)
+            .optional();
+    }
+
+    /** Atomically applies a signed delta and returns the new balance. Caller must hold the row lock. */
+    public long adjustBalance(UUID id, long delta) {
+        return jdbc
+            .sql(
+                "UPDATE accounts SET balance = balance + :delta WHERE id = :id RETURNING balance"
+            )
+            .param("delta", delta)
+            .param("id", id)
+            .query(Long.class)
+            .single();
+    }
 }

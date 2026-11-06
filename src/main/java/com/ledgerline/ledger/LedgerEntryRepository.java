@@ -50,4 +50,27 @@ public class LedgerEntryRepository {
             .query(MAPPER)
             .list();
     }
+
+    public void insert(
+        UUID transferId,
+        UUID accountId,
+        Direction direction,
+        long amount,
+        String currency,
+        long balanceAfter
+    ) {
+        jdbc.sql(
+            """
+            INSERT INTO ledger_entries (transfer_id, account_id, direction, amount, currency, balance_after)
+            VALUES (:transferId, :accountId, :direction, :amount, :currency, :balanceAfter)
+            """
+        )
+            .param("transferId", transferId)
+            .param("accountId", accountId)
+            .param("direction", direction.name())
+            .param("amount", amount)
+            .param("currency", currency)
+            .param("balanceAfter", balanceAfter)
+            .update();
+    }
 }
