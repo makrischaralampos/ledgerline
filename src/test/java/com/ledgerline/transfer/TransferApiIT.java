@@ -33,6 +33,7 @@ class TransferApiIT extends AbstractIntegrationTest {
 
         mvc.perform(
             post("/api/v1/accounts/{id}/deposits", alice)
+                .header("Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(APPLICATION_JSON)
                 .content(
                     "{\"amount\":2500,\"currency\":\"EUR\",\"reference\":\"salary\"}"
@@ -51,6 +52,7 @@ class TransferApiIT extends AbstractIntegrationTest {
         String response = mvc
             .perform(
                 post("/api/v1/transfers")
+                    .header("Idempotency-Key", UUID.randomUUID().toString())
                     .contentType(APPLICATION_JSON)
                     .content(body)
             )
@@ -85,6 +87,7 @@ class TransferApiIT extends AbstractIntegrationTest {
 
         mvc.perform(
             post("/api/v1/transfers")
+                .header("Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(APPLICATION_JSON)
                 .content(body)
         )
@@ -100,6 +103,7 @@ class TransferApiIT extends AbstractIntegrationTest {
 
         mvc.perform(
             post("/api/v1/transfers")
+                .header("Idempotency-Key", UUID.randomUUID().toString())
                 .contentType(APPLICATION_JSON)
                 .content(body)
         )

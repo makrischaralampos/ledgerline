@@ -31,3 +31,7 @@ management:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+ledgerline:
+  idempotency:
+    retention: PT24H
