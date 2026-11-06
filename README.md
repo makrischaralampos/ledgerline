@@ -114,21 +114,24 @@ The concurrency tests were validated by mutation: removing the lock ordering mak
 
 `k6/transfers.js`: ramping arrival rate of random transfers over 100 accounts, 10% immediate retries (must replay the
 same transfer), 2% key-reuse attacks (must get `422`), and a concurrent hot-account scenario (exactly 100 of 500
-attempts may succeed). The run fails on latency/error thresholds or any reconciliation violation afterwards.
+attempts may succeed). The run fails on latency/error thresholds (p95 < 50 ms, p99 < 100 ms, error rate < 0.1%) or any
+reconciliation violation afterwards.
 
 ```bash
 docker run --rm -i --network host -v $(pwd)/k6:/scripts:ro grafana/k6 run \
-  -e BASE_URL=http://localhost:8080 -e RATE=150 /scripts/transfers.js
+  -e BASE_URL=http://localhost:8080 -e RATE=400 /scripts/transfers.js
 ```
 
-| Metric                   | Result                                   |
-| ------------------------ | ---------------------------------------- |
-| Machine                  | _(CPU / RAM, app + DB + k6 on one host)_ |
-| Sustained rate           | _(req/s)_                                |
-| p95 / p99 latency        | _(ms)_                                   |
-| Error rate               | _(%)_                                    |
-| Hot account              | 100 / 500 succeeded, final balance 0     |
-| Reconciliation after run | consistent                               |
+| Metric                          | Result                                                                                                                            |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Machine                         | AMD Ryzen 7 7445HS laptop, ~16 GB RAM; app, PostgreSQL (Docker) and k6 all on the same host                                       |
+| Sustained rate                  | 400 transfers/s steady state (~396 HTTP req/s including retries and conflict probes), 55 s run                                    |
+| p95 / p99 latency (transfer)    | 3.1 ms / 4.8 ms                                                                                                                   |
+| p95 latency (idempotent replay) | 1.0 ms                                                                                                                            |
+| Error rate                      | 0.00% (0 of 22,051 requests)                                                                                                      |
+| Idempotency under load          | 1,898 / 1,898 retries replayed the original transfer; 398 / 398 key-reuse attempts rejected with `422`                            |
+| Hot account                     | 100 / 500 contending withdrawals succeeded, final balance exactly 0                                                               |
+| Reconciliation after run        | consistent: 38,500 transfers / 77,000 ledger entries (cumulative across load runs on the same database), every currency nets to 0 |
 
 ## Observability
 
@@ -139,4 +142,5 @@ docker run --rm -i --network host -v $(pwd)/k6:/scripts:ro grafana/k6 run \
 
 - No authentication; idempotency keys are global rather than scoped per client.
 - Single-currency transfers only (no FX).
+- Load test ran with the app, database and load generator on one machine, so absolute numbers are indicative, not production capacity. The run used at most 2 virtual users at 400 transfers/s, so the saturation point has not been measured yet.
 - Possible extensions: transactional outbox for transfer events, partitioning `ledger_entries` by time, reversal/refund transfers.

@@ -43,8 +43,8 @@ export const options = {
   },
   thresholds: {
     http_req_failed: ["rate<0.001"],
-    "http_req_duration{endpoint:transfer}": ["p(95)<300", "p(99)<750"],
-    "http_req_duration{endpoint:transfer_retry}": ["p(95)<200"],
+    "http_req_duration{endpoint:transfer}": ["p(95)<50", "p(99)<100"],
+    "http_req_duration{endpoint:transfer_retry}": ["p(95)<50"],
     checks: ["rate>0.999"],
     idempotent_replay_ok: ["rate==1"],
     idempotency_conflict_ok: ["rate==1"],
@@ -73,11 +73,13 @@ function createFundedAccount(name, funds) {
     params(idempotencyKey(), "setup"),
   );
   const id = created.json("id");
-  http.post(
-    `${BASE}/api/v1/accounts/${id}/deposits`,
-    JSON.stringify({ amount: funds, currency: "EUR" }),
-    params(idempotencyKey(), "setup"),
-  );
+  if (funds > 0) {
+    http.post(
+      `${BASE}/api/v1/accounts/${id}/deposits`,
+      JSON.stringify({ amount: funds, currency: "EUR" }),
+      params(idempotencyKey(), "setup"),
+    );
+  }
   return id;
 }
 
